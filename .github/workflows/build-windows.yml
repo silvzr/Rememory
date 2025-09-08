@@ -48,19 +48,23 @@ jobs:
     - name: Build C++ Core Library
       shell: cmd
       run: |
-        msbuild Rememory.Core/Rememory.Core.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.vcxproj_platform }} /p:PlatformToolset=v143
+        echo "Building C++ Core Library for ${{ matrix.configuration }} ${{ matrix.vcxproj_platform }}"
+        msbuild Rememory.Core/Rememory.Core.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.vcxproj_platform }} /p:PlatformToolset=v143 /verbosity:minimal
       
     - name: Build .NET Application
       run: |
+        Write-Host "Building .NET Application for ${{ matrix.configuration }} ${{ matrix.platform }}"
         dotnet build Rememory/Rememory.csproj `
           --configuration ${{ matrix.configuration }} `
           --framework net8.0-windows10.0.26100.0 `
           /p:Platform=${{ matrix.platform }} `
+          --verbosity minimal `
           --no-restore
           
     - name: Publish Application (Release only)
       if: matrix.configuration == 'Release'
       run: |
+        Write-Host "Publishing application for ${{ matrix.platform }}"
         dotnet publish Rememory/Rememory.csproj `
           --configuration ${{ matrix.configuration }} `
           --runtime ${{ matrix.runtime_identifier }} `
@@ -68,6 +72,13 @@ jobs:
           /p:Platform=${{ matrix.platform }} `
           /p:PublishSingleFile=false `
           --output ./publish/${{ matrix.platform }}
+          
+    - name: List published files (Release only)
+      if: matrix.configuration == 'Release'
+      shell: cmd
+      run: |
+        echo "Contents of publish/${{ matrix.platform }}:"
+        dir /s "publish\${{ matrix.platform }}"
           
     - name: Upload Build Artifacts
       if: matrix.configuration == 'Release'

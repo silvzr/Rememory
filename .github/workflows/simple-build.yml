@@ -1,0 +1,65 @@
+name: Simple Build Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        default: 'x64'
+        type: choice
+        options:
+        - x64
+        - x86
+        - ARM64
+      configuration:
+        description: 'Build configuration'
+        required: true
+        default: 'Debug'
+        type: choice
+        options:
+        - Debug
+        - Release
+
+jobs:
+  simple-build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Set platform variables
+      shell: pwsh
+      run: |
+        $platform = "${{ github.event.inputs.platform }}"
+        $vcxproj_platform = if ($platform -eq "x86") { "Win32" } elseif ($platform -eq "ARM64") { "x64" } else { $platform }
+        echo "VCXPROJ_PLATFORM=$vcxproj_platform" >> $env:GITHUB_ENV
+        echo "Building for platform: $platform (C++ project: $vcxproj_platform)"
+      
+    - name: Restore packages
+      run: dotnet restore Rememory.sln
+      
+    - name: Build C++ Core Library
+      shell: cmd
+      run: |
+        echo "Building C++ project with Configuration=${{ github.event.inputs.configuration }} Platform=%VCXPROJ_PLATFORM%"
+        msbuild Rememory.Core/Rememory.Core.vcxproj /p:Configuration=${{ github.event.inputs.configuration }} /p:Platform=%VCXPROJ_PLATFORM% /verbosity:minimal
+      
+    - name: Build .NET Application
+      run: |
+        Write-Host "Building .NET application"
+        dotnet build Rememory/Rememory.csproj `
+          --configuration ${{ github.event.inputs.configuration }} `
+          --framework net8.0-windows10.0.26100.0 `
+          /p:Platform=${{ github.event.inputs.platform }} `
+          --verbosity minimal `
+          --no-restore
