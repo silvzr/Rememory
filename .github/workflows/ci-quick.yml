@@ -1,0 +1,39 @@
+name: CI - Quick Build
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  quick-build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Restore packages
+      run: dotnet restore Rememory.sln
+      
+    - name: Build C++ Core Library (x64 Debug)
+      shell: cmd
+      run: |
+        msbuild Rememory.Core/Rememory.Core.vcxproj /p:Configuration=Debug /p:Platform=x64
+      
+    - name: Build .NET Application (x64 Debug)
+      run: |
+        dotnet build Rememory/Rememory.csproj `
+          --configuration Debug `
+          --framework net8.0-windows10.0.26100.0 `
+          /p:Platform=x64 `
+          --no-restore
