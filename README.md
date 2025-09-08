@@ -30,6 +30,21 @@ Get Rememory today and never lose track of copied information again!
 
 [Privacy Policy](./PRIVACY.md)
 
+## Build Status
+
+[![Build Windows App](https://github.com/silvzr/Rememory/actions/workflows/build-windows.yml/badge.svg)](https://github.com/silvzr/Rememory/actions/workflows/build-windows.yml)
+[![CI - Quick Build](https://github.com/silvzr/Rememory/actions/workflows/ci-quick.yml/badge.svg)](https://github.com/silvzr/Rememory/actions/workflows/ci-quick.yml)
+
+## For Developers
+
+This project uses GitHub Actions for automated building. The following workflows are available:
+
+- **Full Build Matrix**: Builds all platforms (x64, x86, ARM64) and configurations (Debug, Release)
+- **Quick CI**: Fast validation build for pull requests
+- **Manual Build**: Allows testing specific platform/configuration combinations
+
+See [.github/workflows/](./.github/workflows/) for workflow details.
+
 ## Translation
 
 [![Crowdin](https://badges.crowdin.net/rememory/localized.svg)](https://crowdin.com/project/rememory)

@@ -1,0 +1,89 @@
+name: Build Windows App
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+        platform: [x64, x86, ARM64]
+        include:
+          # Map platform names for C++ project (x86 -> Win32)
+          - platform: x86
+            vcxproj_platform: Win32
+            runtime_identifier: win-x86
+          - platform: x64
+            vcxproj_platform: x64
+            runtime_identifier: win-x64
+          - platform: ARM64
+            vcxproj_platform: x64  # C++ project only has x64 config for ARM64
+            runtime_identifier: win-arm64
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+      
+    - name: Restore NuGet packages
+      run: dotnet restore Rememory.sln
+      
+    - name: Build C++ Core Library
+      shell: cmd
+      run: |
+        echo "Building C++ Core Library for ${{ matrix.configuration }} ${{ matrix.vcxproj_platform }}"
+        msbuild Rememory.Core/Rememory.Core.vcxproj /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.vcxproj_platform }} /p:PlatformToolset=v143 /verbosity:minimal
+      
+    - name: Build .NET Application
+      run: |
+        Write-Host "Building .NET Application for ${{ matrix.configuration }} ${{ matrix.platform }}"
+        dotnet build Rememory/Rememory.csproj `
+          --configuration ${{ matrix.configuration }} `
+          --framework net8.0-windows10.0.26100.0 `
+          /p:Platform=${{ matrix.platform }} `
+          --verbosity minimal `
+          --no-restore
+          
+    - name: Publish Application (Release only)
+      if: matrix.configuration == 'Release'
+      run: |
+        Write-Host "Publishing application for ${{ matrix.platform }}"
+        dotnet publish Rememory/Rememory.csproj `
+          --configuration ${{ matrix.configuration }} `
+          --runtime ${{ matrix.runtime_identifier }} `
+          --self-contained true `
+          /p:Platform=${{ matrix.platform }} `
+          /p:PublishSingleFile=false `
+          --output ./publish/${{ matrix.platform }}
+          
+    - name: List published files (Release only)
+      if: matrix.configuration == 'Release'
+      shell: cmd
+      run: |
+        echo "Contents of publish/${{ matrix.platform }}:"
+        dir /s "publish\${{ matrix.platform }}"
+          
+    - name: Upload Build Artifacts
+      if: matrix.configuration == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: rememory-${{ matrix.platform }}-${{ matrix.configuration }}
+        path: ./publish/${{ matrix.platform }}
+        retention-days: 30
